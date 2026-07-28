@@ -1,10 +1,10 @@
 {
-  "checked_at": "2026-07-28T22:09:16.626425+00:00",
+  "checked_at": "2026-07-28T22:17:21.026996+00:00",
   "components": [
     {
       "error": null,
       "key": "app",
-      "latency_ms": 279,
+      "latency_ms": 596,
       "name": "Valdra application",
       "status": 200,
       "up": true,
@@ -13,7 +13,7 @@
     {
       "error": null,
       "key": "signin",
-      "latency_ms": 234,
+      "latency_ms": 307,
       "name": "Sign-in",
       "status": 200,
       "up": true,
@@ -22,7 +22,7 @@
     {
       "error": null,
       "key": "trust",
-      "latency_ms": 180,
+      "latency_ms": 176,
       "name": "Trust Center",
       "status": 200,
       "up": true,
@@ -31,7 +31,7 @@
     {
       "error": null,
       "key": "marketing",
-      "latency_ms": 209,
+      "latency_ms": 267,
       "name": "valdra.ai",
       "status": 200,
       "up": true,
@@ -40,7 +40,7 @@
     {
       "error": null,
       "key": "legal",
-      "latency_ms": 55,
+      "latency_ms": 206,
       "name": "Legal documents",
       "status": 200,
       "up": true,
@@ -48,5 +48,5 @@
     }
   ],
   "overall": "operational",
-  "uptime_90d": 100.0
+  "uptime_90d": 99.374
 }
