@@ -23,13 +23,23 @@ private.
 
 Every 10 minutes, from GitHub's network:
 
-| Component | Endpoint |
-|---|---|
-| Valdra application | `app.valdra.ai/` |
-| Sign-in | `app.valdra.ai/en/login` |
-| Trust Center | `app.valdra.ai/trust/canuckt-synergy` |
-| valdra.ai | `valdra.ai/` |
-| Legal documents | `valdra.ai/legal/sla.html` |
+**One row per failure domain, not one per URL.**
+
+| Component | Endpoint | Fails independently because |
+|---|---|---|
+| Valdra application | `app.valdra.ai/` | Next.js container on @shield |
+| API | `app.valdra.ai/health` | comply-api — a separate container and process |
+| Website | `valdra.ai/` | @wp — a different server entirely |
+
+Sign-in, the Trust Center and the legal pages were removed on 2026-07-28. Sign-in and the
+Trust Center are served by the *same container* as the app, so their rows could not say
+anything the app row had not already said — three strips moving in lockstep reads as
+padding, and a buyer notices. Legal shares a host with valdra.ai. The Trust Center probe
+also pointed at `/trust/canuckt-synergy`, publishing our own org slug on a public page.
+
+The API row was added at the same time: Partner API and MCP integrations talk to it
+directly, so it is a surface a customer can lose while the dashboard still looks fine.
+`/health` is comply-api; `/api/health` is the Next.js frontend — do not confuse them.
 
 This is separate from, and does not replace, the 30-minute synthetic smoke test that runs
 against production internally. That one signs in and exercises real workflows end to end
@@ -82,6 +92,11 @@ cd public && python3 -m http.server 8000
 
 Append to `COMPONENTS` in `scripts/probe.py`. The page renders whatever the data
 contains — no page change needed.
+
+Apply one test before adding: **can it fail while everything already listed stays up?**
+If not, it is a duplicate row that dilutes the page rather than informing it. Renaming or
+merging a component means migrating its key in `public/data/history.json` by hand, or the
+old history is orphaned and silently vanishes from the page.
 
 ## Honest limitations
 
