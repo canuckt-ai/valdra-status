@@ -1,0 +1,132 @@
+<!doctype html>
+<html lang="en"><head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Valdra Status</title>
+<meta name="description" content="Live availability for the Valdra compliance platform. Checked every 10 minutes from outside our infrastructure.">
+<link rel="canonical" href="https://status.valdra.ai/">
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;700&display=swap');
+:root{--indigo:#523FAB;--ink:#1B1B2F;--muted:#5A5A72;--line:#E4E2F0;
+      --ok:#0F9D58;--warn:#E8A33D;--bad:#D93025;--card:#fff;--bg:#FAFAFC}
+@media (prefers-color-scheme:dark){
+  :root{--ink:#ECEAF6;--muted:#9C99B4;--line:#2C2A3D;--card:#1B1A29;--bg:#131220}
+}
+:root[data-theme="light"]{--ink:#1B1B2F;--muted:#5A5A72;--line:#E4E2F0;--card:#fff;--bg:#FAFAFC}
+:root[data-theme="dark"]{--ink:#ECEAF6;--muted:#9C99B4;--line:#2C2A3D;--card:#1B1A29;--bg:#131220}
+*{box-sizing:border-box}
+body{font-family:Montserrat,-apple-system,Segoe UI,sans-serif;background:var(--bg);color:var(--ink);
+     margin:0;padding:40px 20px 70px;line-height:1.6}
+.wrap{max-width:780px;margin:0 auto}
+header{display:flex;justify-content:space-between;align-items:center;margin-bottom:30px;flex-wrap:wrap;gap:12px}
+.brand{font-size:22px;font-weight:700;color:var(--indigo);text-decoration:none;letter-spacing:-.5px}
+.brand small{display:block;font-size:9px;letter-spacing:2.4px;color:var(--muted);font-weight:600}
+.banner{border-radius:14px;padding:22px 24px;margin-bottom:26px;border:2px solid;display:flex;
+        align-items:center;gap:14px;background:var(--card)}
+.banner .dot{width:13px;height:13px;border-radius:50%;flex:0 0 13px}
+.banner h1{font-size:19px;margin:0;font-weight:700}
+.banner p{margin:2px 0 0;font-size:13px;color:var(--muted)}
+.ok{border-color:var(--ok)}   .ok .dot{background:var(--ok)}
+.warn{border-color:var(--warn)} .warn .dot{background:var(--warn)}
+.bad{border-color:var(--bad)} .bad .dot{background:var(--bad)}
+.card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:6px 20px;margin-bottom:22px}
+.row{display:flex;align-items:center;gap:12px;padding:15px 0;border-bottom:1px solid var(--line)}
+.row:last-child{border-bottom:none}
+.row .nm{flex:1;font-weight:600;font-size:14.5px}
+.row .st{font-size:12.5px;color:var(--muted);white-space:nowrap}
+.pill{width:9px;height:9px;border-radius:50%;flex:0 0 9px}
+.bars{display:flex;gap:2px;height:30px;align-items:flex-end;margin:14px 0 6px}
+.bar{flex:1;border-radius:2px;min-width:2px;background:var(--line)}
+.legend{display:flex;justify-content:space-between;font-size:11px;color:var(--muted)}
+h2{font-size:13px;text-transform:uppercase;letter-spacing:1px;color:var(--muted);margin:0 0 4px}
+.big{font-size:31px;font-weight:700;letter-spacing:-1px}
+footer{margin-top:34px;padding-top:18px;border-top:1px solid var(--line);font-size:12.5px;color:var(--muted)}
+a{color:var(--indigo)}
+</style></head>
+<body><div class="wrap">
+
+<header>
+  <a class="brand" href="https://valdra.ai">Valdra<small>BY CANUCKT</small></a>
+  <span style="font-size:12.5px;color:var(--muted)" id="checked">loading…</span>
+</header>
+
+<div class="banner ok" id="banner">
+  <span class="dot"></span>
+  <div><h1 id="headline">Checking…</h1><p id="sub"></p></div>
+</div>
+
+<div class="card" id="components"></div>
+
+<div class="card" style="padding:20px">
+  <h2>Availability, last 90 days</h2>
+  <div class="big" id="uptime">—</div>
+  <div class="bars" id="bars"></div>
+  <div class="legend"><span>90 days ago</span><span>today</span></div>
+</div>
+
+<footer>
+  Checked every 10 minutes from outside our infrastructure, so this page stays up even
+  when Valdra does not. Our
+  <a href="https://valdra.ai/legal/sla.html">Service Level Agreement</a>
+  commits to 99.0% monthly availability with service credits.<br><br>
+  Something wrong that this page does not show?
+  <a href="mailto:support@valdra.ai">support@valdra.ai</a>
+</footer>
+
+</div>
+<script>
+const CLS = { operational:'ok', degraded:'warn', outage:'bad' };
+const MSG = {
+  operational: ['All systems operational', 'Everything is running normally.'],
+  degraded:    ['Partial outage', 'Some components are affected. We are on it.'],
+  outage:      ['Major outage', 'We are aware and working to restore service.']
+};
+function ago(iso){
+  const m = Math.round((Date.now() - new Date(iso)) / 60000);
+  if (m < 1) return 'just now';
+  if (m < 60) return m + ' min ago';
+  const h = Math.round(m/60); return h + (h===1?' hour ago':' hours ago');
+}
+async function load(){
+  const [cur, hist] = await Promise.all([
+    fetch('data/current.json?t=' + Date.now()).then(r=>r.json()),
+    fetch('data/history.json?t=' + Date.now()).then(r=>r.json()).catch(()=>({}))
+  ]);
+  const b = document.getElementById('banner');
+  b.className = 'banner ' + (CLS[cur.overall] || 'warn');
+  document.getElementById('headline').textContent = MSG[cur.overall][0];
+  document.getElementById('sub').textContent = MSG[cur.overall][1];
+  document.getElementById('checked').textContent = 'Updated ' + ago(cur.checked_at);
+
+  document.getElementById('components').innerHTML = cur.components.map(c => `
+    <div class="row">
+      <span class="pill" style="background:${c.up ? 'var(--ok)' : 'var(--bad)'}"></span>
+      <span class="nm">${c.name}</span>
+      <span class="st">${c.up ? 'Operational' : 'Down'}${c.latency_ms != null ? ' · ' + c.latency_ms + 'ms' : ''}</span>
+    </div>`).join('');
+
+  document.getElementById('uptime').textContent =
+    cur.uptime_90d != null ? cur.uptime_90d.toFixed(3) + '%' : '—';
+
+  // One bar per day across every component, so a partial outage is still visible.
+  const days = [...new Set(Object.values(hist).flatMap(o => Object.keys(o)))].sort().slice(-90);
+  document.getElementById('bars').innerHTML = days.map(d => {
+    let up = 0, all = 0;
+    for (const k of Object.keys(hist)) {
+      const e = hist[k][d]; if (!e) continue;
+      up += e.up; all += e.up + e.down;
+    }
+    if (!all) return '<div class="bar" style="height:60%"></div>';
+    const pct = up / all;
+    const col = pct === 1 ? 'var(--ok)' : pct >= 0.95 ? 'var(--warn)' : 'var(--bad)';
+    return `<div class="bar" title="${d}: ${(pct*100).toFixed(1)}%" style="height:100%;background:${col}"></div>`;
+  }).join('');
+}
+load().catch(() => {
+  document.getElementById('headline').textContent = 'Status data unavailable';
+  document.getElementById('sub').textContent = 'The checker has not reported recently.';
+  document.getElementById('banner').className = 'banner warn';
+});
+setInterval(load, 60000);
+</script>
+</body></html>
