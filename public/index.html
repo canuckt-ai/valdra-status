@@ -59,11 +59,29 @@ header{display:flex;justify-content:space-between;align-items:center;
 .s-ok{color:var(--ok)} .s-bad{color:var(--bad)}
 
 .bars{display:flex;gap:2px;height:34px;align-items:stretch}
-.bar{flex:1;min-width:2px;border-radius:1.5px;background:#EDEAE3}
+.bar{flex:1;min-width:2px;border-radius:1.5px;background:#EDEAE3;
+     transition:opacity .12s ease}
+.bars:hover .bar{opacity:.45}
+.bars .bar:hover{opacity:1}
 .bar-ok{background:var(--ok)} .bar-warn{background:var(--warn)} .bar-bad{background:var(--bad)}
 
 .axis{display:flex;align-items:center;gap:10px;margin-top:9px;font-size:11.5px;color:var(--muted)}
 .axis .rule{flex:1;height:1px;background:var(--line)}
+
+/* Hover card. Fixed-positioned and appended to <body> so it is never clipped by a
+   card's overflow, and pointer-events:none so it can never sit between the cursor and
+   the bar underneath it and cause a flicker loop. */
+#tip{position:fixed;z-index:50;pointer-events:none;opacity:0;
+     transition:opacity .1s ease;background:#1B1B2F;color:#fff;
+     border-radius:8px;padding:9px 13px;font-size:12.5px;line-height:1.5;
+     box-shadow:0 6px 22px rgba(27,27,47,.22);max-width:250px;
+     transform:translate(-50%,-100%)}
+#tip.on{opacity:1}
+#tip .t-date{font-weight:600;margin-bottom:2px;white-space:nowrap}
+#tip .t-stat{color:#C9C5DA}
+#tip .t-stat.bad{color:#FF9A8F}
+#tip:after{content:'';position:absolute;left:50%;top:100%;margin-left:-5px;
+           border:5px solid transparent;border-top-color:#1B1B2F}
 
 footer{margin-top:40px;padding-top:22px;border-top:1px solid var(--line);
        font-size:13px;color:var(--muted);line-height:1.75}
@@ -113,6 +131,7 @@ footer a{color:var(--indigo)}
 </footer>
 
 </div>
+<div id="tip" role="tooltip" aria-hidden="true"></div>
 <script>
 const BANNER = {
   operational: ['b-ok',   'All systems operational', 'Everything is running normally.'],
@@ -139,16 +158,55 @@ function lastNDays(n){
   return out;
 }
 
+const DATE_FMT = {weekday:'long', day:'numeric', month:'long', year:'numeric', timeZone:'UTC'};
+const longDate = d => new Date(d + 'T00:00:00Z').toLocaleDateString('en-CA', DATE_FMT);
+
+// The native `title` attribute was replaced with a real hover card: it took ~1s to appear,
+// could not be styled, and showed a bare ISO date. On a page someone opens mid-incident,
+// "which day was that?" needs answering instantly.
 function strip(days, byDay){
   return days.map(d => {
     const e = byDay[d];
-    if (!e || !(e.up + e.down)) return `<div class="bar" title="${d} · no data"></div>`;
-    const pct = e.up / (e.up + e.down);
+    const date = longDate(d);
+    if (!e || !(e.up + e.down))
+      return `<div class="bar" data-date="${date}" data-stat="No data — monitoring had not started"></div>`;
+    const total = e.up + e.down, pct = e.up / total;
     const cls = pct === 1 ? 'bar-ok' : pct >= 0.95 ? 'bar-warn' : 'bar-bad';
-    const label = pct === 1 ? 'No downtime recorded' : (100 * pct).toFixed(1) + '% uptime';
-    return `<div class="bar ${cls}" title="${d} · ${label}"></div>`;
+    // Say how many checks failed, not just a percentage — "2 of 48 checks failed" is a
+    // fact someone can match against their own logs; "95.8%" is not.
+    const stat = pct === 1
+      ? `No downtime · ${total} checks`
+      : `${e.down} of ${total} checks failed · ${(100 * pct).toFixed(2)}% uptime`;
+    return `<div class="bar ${cls}" data-date="${date}" data-stat="${stat}"${pct < 1 ? ' data-bad="1"' : ''}></div>`;
   }).join('');
 }
+
+const tip = document.getElementById('tip');
+function showTip(bar){
+  tip.innerHTML = `<div class="t-date">${bar.dataset.date}</div>` +
+                  `<div class="t-stat${bar.dataset.bad ? ' bad' : ''}">${bar.dataset.stat}</div>`;
+  tip.classList.add('on');
+  tip.setAttribute('aria-hidden', 'false');
+  const r = bar.getBoundingClientRect(), w = tip.offsetWidth;
+  // Clamp to the viewport so the first and last bars do not push the card off-screen.
+  const x = Math.min(Math.max(r.left + r.width / 2, w / 2 + 8), window.innerWidth - w / 2 - 8);
+  tip.style.left = x + 'px';
+  tip.style.top  = (r.top - 10) + 'px';
+}
+function hideTip(){ tip.classList.remove('on'); tip.setAttribute('aria-hidden', 'true'); }
+
+// Delegated, so it keeps working across the 60-second re-render that replaces every bar.
+document.addEventListener('mouseover', e => {
+  const bar = e.target.closest('.bar');
+  if (bar) showTip(bar); else if (!e.target.closest('#tip')) hideTip();
+});
+document.addEventListener('mouseleave', hideTip, true);
+// Touch: tap a bar to read it, tap anywhere else to dismiss.
+document.addEventListener('click', e => {
+  const bar = e.target.closest('.bar');
+  bar ? showTip(bar) : hideTip();
+});
+window.addEventListener('scroll', hideTip, {passive: true});
 
 async function load(){
   const [cur, hist] = await Promise.all([

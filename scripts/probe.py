@@ -26,19 +26,28 @@ CURRENT = DATA / "current.json"
 RETAIN_DAYS = 90
 TIMEOUT = 20
 
-# Each component is something a customer would notice losing. "Marketing site" is
-# deliberately included: if valdra.ai is down, prospects think the company is gone.
+# One row per FAILURE DOMAIN, not one per URL. Sign-in, the Trust Center and the legal
+# pages were all dropped: sign-in and the Trust Center are served by the same container as
+# the app, so their rows could never say anything the app row had not already said, and
+# three strips moving in lockstep reads as padding. Legal shares a host with valdra.ai.
+#
+# The Trust Center probe also had to go on its own merits — it hit /trust/canuckt-synergy,
+# publishing our own org slug on a public page.
+#
+# What is left can each fail independently:
+#   app      Next.js container   (@shield)
+#   api      comply-api container (@shield, separate container, separate process)
+#   website  valdra.ai            (@wp — a different server entirely)
+#
+# The API earns its row: Partner API and MCP integrations talk to it directly, so it is a
+# surface a customer loses without the dashboard looking any different.
 COMPONENTS = [
-    {"key": "app",       "name": "Valdra application", "url": "https://app.valdra.ai/",
+    {"key": "app",     "name": "Valdra application", "url": "https://app.valdra.ai/",
      "ok": lambda c: 200 <= c < 400},
-    {"key": "signin",    "name": "Sign-in",            "url": "https://app.valdra.ai/en/login",
+    {"key": "api",     "name": "API",                "url": "https://app.valdra.ai/health",
      "ok": lambda c: c == 200},
-    {"key": "trust",     "name": "Trust Center",       "url": "https://app.valdra.ai/trust/canuckt-synergy",
-     "ok": lambda c: c == 200},
-    {"key": "marketing", "name": "valdra.ai",          "url": "https://valdra.ai/",
+    {"key": "website", "name": "Website",            "url": "https://valdra.ai/",
      "ok": lambda c: 200 <= c < 400},
-    {"key": "legal",     "name": "Legal documents",    "url": "https://valdra.ai/legal/sla.html",
-     "ok": lambda c: c == 200},
 ]
 
 
