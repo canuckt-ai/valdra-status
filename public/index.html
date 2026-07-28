@@ -5,127 +5,195 @@
 <title>Valdra Status</title>
 <meta name="description" content="Live availability for the Valdra compliance platform. Checked every 10 minutes from outside our infrastructure.">
 <link rel="canonical" href="https://status.valdra.ai/">
+<meta name="color-scheme" content="light">
 <style>
-@import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;700&display=swap');
-:root{--indigo:#523FAB;--ink:#1B1B2F;--muted:#5A5A72;--line:#E4E2F0;
-      --ok:#0F9D58;--warn:#E8A33D;--bad:#D93025;--card:#fff;--bg:#FAFAFC}
-@media (prefers-color-scheme:dark){
-  :root{--ink:#ECEAF6;--muted:#9C99B4;--line:#2C2A3D;--card:#1B1A29;--bg:#131220}
+@import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700&display=swap');
+
+/* Deliberately light-only. A status page is read in a hurry, often by someone anxious,
+   and frequently printed or screenshotted into an incident report. Following the OS dark
+   preference made it a wall of black; calm and legible beats clever here. */
+:root{
+  --bg:#FAF9F5;            /* warm off-white — softer than pure white under fluorescents */
+  --card:#FFFFFF;
+  --ink:#1B1B2F;
+  --muted:#6B6880;
+  --line:#E7E4DC;
+  --indigo:#523FAB;
+  --ok:#5A9E3C;            /* muted green — a status page should not look like a toy */
+  --ok-soft:#EAF3E4;
+  --warn:#D9922B;
+  --bad:#C4362B;
 }
-:root[data-theme="light"]{--ink:#1B1B2F;--muted:#5A5A72;--line:#E4E2F0;--card:#fff;--bg:#FAFAFC}
-:root[data-theme="dark"]{--ink:#ECEAF6;--muted:#9C99B4;--line:#2C2A3D;--card:#1B1A29;--bg:#131220}
 *{box-sizing:border-box}
-body{font-family:Montserrat,-apple-system,Segoe UI,sans-serif;background:var(--bg);color:var(--ink);
-     margin:0;padding:40px 20px 70px;line-height:1.6}
-.wrap{max-width:780px;margin:0 auto}
-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:30px;flex-wrap:wrap;gap:12px}
-.brand{font-size:22px;font-weight:700;color:var(--indigo);text-decoration:none;letter-spacing:-.5px}
-.brand small{display:block;font-size:9px;letter-spacing:2.4px;color:var(--muted);font-weight:600}
-.banner{border-radius:14px;padding:22px 24px;margin-bottom:26px;border:2px solid;display:flex;
-        align-items:center;gap:14px;background:var(--card)}
-.banner .dot{width:13px;height:13px;border-radius:50%;flex:0 0 13px}
-.banner h1{font-size:19px;margin:0;font-weight:700}
-.banner p{margin:2px 0 0;font-size:13px;color:var(--muted)}
-.ok{border-color:var(--ok)}   .ok .dot{background:var(--ok)}
-.warn{border-color:var(--warn)} .warn .dot{background:var(--warn)}
-.bad{border-color:var(--bad)} .bad .dot{background:var(--bad)}
-.card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:6px 20px;margin-bottom:22px}
-.row{display:flex;align-items:center;gap:12px;padding:15px 0;border-bottom:1px solid var(--line)}
-.row:last-child{border-bottom:none}
-.row .nm{flex:1;font-weight:600;font-size:14.5px}
-.row .st{font-size:12.5px;color:var(--muted);white-space:nowrap}
-.pill{width:9px;height:9px;border-radius:50%;flex:0 0 9px}
-.bars{display:flex;gap:2px;height:30px;align-items:flex-end;margin:14px 0 6px}
-.bar{flex:1;border-radius:2px;min-width:2px;background:var(--line)}
-.legend{display:flex;justify-content:space-between;font-size:11px;color:var(--muted)}
-h2{font-size:13px;text-transform:uppercase;letter-spacing:1px;color:var(--muted);margin:0 0 4px}
-.big{font-size:31px;font-weight:700;letter-spacing:-1px}
-footer{margin-top:34px;padding-top:18px;border-top:1px solid var(--line);font-size:12.5px;color:var(--muted)}
-a{color:var(--indigo)}
+html,body{background:var(--bg)}
+body{
+  font-family:Montserrat,-apple-system,BlinkMacSystemFont,Segoe UI,sans-serif;
+  color:var(--ink); margin:0; padding:52px 20px 90px; line-height:1.6;
+  -webkit-font-smoothing:antialiased;
+}
+.wrap{max-width:860px;margin:0 auto}
+
+header{display:flex;justify-content:space-between;align-items:center;
+       margin-bottom:38px;flex-wrap:wrap;gap:14px}
+.brand{font-size:23px;font-weight:700;color:var(--indigo);text-decoration:none;letter-spacing:-.5px;line-height:1.15}
+.brand small{display:block;font-size:9px;letter-spacing:2.6px;color:var(--muted);font-weight:600;margin-top:3px}
+.checked{font-size:12.5px;color:var(--muted)}
+
+/* Solid status banner — the one thing a visitor must read in under a second. */
+.banner{border-radius:10px;padding:19px 24px;margin-bottom:34px;color:#fff;
+        font-size:18px;font-weight:600;letter-spacing:-.2px;
+        display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap}
+.banner .sub{font-size:13px;font-weight:400;opacity:.92}
+.b-ok{background:var(--ok)} .b-warn{background:var(--warn)} .b-bad{background:var(--bad)}
+
+.meta-line{display:flex;justify-content:space-between;align-items:baseline;
+           font-size:12.5px;color:var(--muted);margin-bottom:10px}
+
+/* One card per component, each with its own 90-day strip — an aggregate bar hides
+   which thing was actually broken, which is the only question a visitor has. */
+.comp{background:var(--card);border:1px solid var(--line);border-radius:10px;
+      padding:18px 22px 15px;margin-bottom:12px}
+.comp-top{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:13px}
+.comp-name{font-weight:600;font-size:14.5px}
+.comp-state{font-size:12.5px;font-weight:600;white-space:nowrap}
+.s-ok{color:var(--ok)} .s-bad{color:var(--bad)}
+
+.bars{display:flex;gap:2px;height:34px;align-items:stretch}
+.bar{flex:1;min-width:2px;border-radius:1.5px;background:#EDEAE3}
+.bar-ok{background:var(--ok)} .bar-warn{background:var(--warn)} .bar-bad{background:var(--bad)}
+
+.axis{display:flex;align-items:center;gap:10px;margin-top:9px;font-size:11.5px;color:var(--muted)}
+.axis .rule{flex:1;height:1px;background:var(--line)}
+
+footer{margin-top:40px;padding-top:22px;border-top:1px solid var(--line);
+       font-size:13px;color:var(--muted);line-height:1.75}
+footer a{color:var(--indigo)}
+@media (max-width:560px){
+  body{padding:34px 15px 70px}
+  .banner{font-size:16px}
+  .comp{padding:15px 16px 13px}
+}
 </style></head>
 <body><div class="wrap">
 
 <header>
-  <a class="brand" href="https://valdra.ai">Valdra<small>BY CANUCKT</small></a>
-  <span style="font-size:12.5px;color:var(--muted)" id="checked">loading…</span>
+  <a class="brand" href="https://valdra.ai">Valdra<small>STATUS</small></a>
+  <span class="checked" id="checked">Loading…</span>
 </header>
 
-<div class="banner ok" id="banner">
-  <span class="dot"></span>
-  <div><h1 id="headline">Checking…</h1><p id="sub"></p></div>
+<div class="banner b-ok" id="banner">
+  <span id="headline">Checking status…</span>
+  <span class="sub" id="sub"></span>
 </div>
 
-<div class="card" id="components"></div>
-
-<div class="card" style="padding:20px">
-  <h2>Availability, last 90 days</h2>
-  <div class="big" id="uptime">—</div>
-  <div class="bars" id="bars"></div>
-  <div class="legend"><span>90 days ago</span><span>today</span></div>
+<div class="meta-line">
+  <span id="window-label">Uptime</span>
+  <span id="overall-uptime"></span>
 </div>
+
+<div id="components"></div>
 
 <footer>
-  Checked every 10 minutes from outside our infrastructure, so this page stays up even
-  when Valdra does not. Our
+  Checked every 10&nbsp;minutes from outside our own infrastructure, so this page stays up
+  even when Valdra does not. Our
   <a href="https://valdra.ai/legal/sla.html">Service Level Agreement</a>
-  commits to 99.0% monthly availability with service credits.<br><br>
-  Something wrong that this page does not show?
+  commits to 99.0% monthly availability with service credits.
+  <br>
+  Seeing something this page does not show?
   <a href="mailto:support@valdra.ai">support@valdra.ai</a>
 </footer>
 
 </div>
 <script>
-const CLS = { operational:'ok', degraded:'warn', outage:'bad' };
-const MSG = {
-  operational: ['All systems operational', 'Everything is running normally.'],
-  degraded:    ['Partial outage', 'Some components are affected. We are on it.'],
-  outage:      ['Major outage', 'We are aware and working to restore service.']
+const BANNER = {
+  operational: ['b-ok',   'All systems operational', 'Everything is running normally.'],
+  degraded:    ['b-warn', 'Partial outage',          'Some components are affected. We are on it.'],
+  outage:      ['b-bad',  'Major outage',            'We are aware and working to restore service.']
 };
+
 function ago(iso){
   const m = Math.round((Date.now() - new Date(iso)) / 60000);
-  if (m < 1) return 'just now';
-  if (m < 60) return m + ' min ago';
-  const h = Math.round(m/60); return h + (h===1?' hour ago':' hours ago');
+  if (m < 2) return 'Updated just now';
+  if (m < 60) return 'Updated ' + m + ' minutes ago';
+  const h = Math.round(m / 60);
+  return 'Updated ' + h + (h === 1 ? ' hour ago' : ' hours ago');
 }
-async function load(){
-  const [cur, hist] = await Promise.all([
-    fetch('data/current.json?t=' + Date.now()).then(r=>r.json()),
-    fetch('data/history.json?t=' + Date.now()).then(r=>r.json()).catch(()=>({}))
-  ]);
-  const b = document.getElementById('banner');
-  b.className = 'banner ' + (CLS[cur.overall] || 'warn');
-  document.getElementById('headline').textContent = MSG[cur.overall][0];
-  document.getElementById('sub').textContent = MSG[cur.overall][1];
-  document.getElementById('checked').textContent = 'Updated ' + ago(cur.checked_at);
 
-  document.getElementById('components').innerHTML = cur.components.map(c => `
-    <div class="row">
-      <span class="pill" style="background:${c.up ? 'var(--ok)' : 'var(--bad)'}"></span>
-      <span class="nm">${c.name}</span>
-      <span class="st">${c.up ? 'Operational' : 'Down'}${c.latency_ms != null ? ' · ' + c.latency_ms + 'ms' : ''}</span>
-    </div>`).join('');
+// 90 calendar days ending today, so gaps in history render as "no data" rather than
+// silently compressing the timeline and making an outage look shorter than it was.
+function lastNDays(n){
+  const out = [], d = new Date();
+  for (let i = n - 1; i >= 0; i--) {
+    const x = new Date(d); x.setUTCDate(d.getUTCDate() - i);
+    out.push(x.toISOString().slice(0, 10));
+  }
+  return out;
+}
 
-  document.getElementById('uptime').textContent =
-    cur.uptime_90d != null ? cur.uptime_90d.toFixed(3) + '%' : '—';
-
-  // One bar per day across every component, so a partial outage is still visible.
-  const days = [...new Set(Object.values(hist).flatMap(o => Object.keys(o)))].sort().slice(-90);
-  document.getElementById('bars').innerHTML = days.map(d => {
-    let up = 0, all = 0;
-    for (const k of Object.keys(hist)) {
-      const e = hist[k][d]; if (!e) continue;
-      up += e.up; all += e.up + e.down;
-    }
-    if (!all) return '<div class="bar" style="height:60%"></div>';
-    const pct = up / all;
-    const col = pct === 1 ? 'var(--ok)' : pct >= 0.95 ? 'var(--warn)' : 'var(--bad)';
-    return `<div class="bar" title="${d}: ${(pct*100).toFixed(1)}%" style="height:100%;background:${col}"></div>`;
+function strip(days, byDay){
+  return days.map(d => {
+    const e = byDay[d];
+    if (!e || !(e.up + e.down)) return `<div class="bar" title="${d} · no data"></div>`;
+    const pct = e.up / (e.up + e.down);
+    const cls = pct === 1 ? 'bar-ok' : pct >= 0.95 ? 'bar-warn' : 'bar-bad';
+    const label = pct === 1 ? 'No downtime recorded' : (100 * pct).toFixed(1) + '% uptime';
+    return `<div class="bar ${cls}" title="${d} · ${label}"></div>`;
   }).join('');
 }
+
+async function load(){
+  const [cur, hist] = await Promise.all([
+    fetch('data/current.json?t=' + Date.now()).then(r => r.json()),
+    fetch('data/history.json?t=' + Date.now()).then(r => r.json()).catch(() => ({}))
+  ]);
+
+  const [cls, head, sub] = BANNER[cur.overall] || BANNER.degraded;
+  const b = document.getElementById('banner');
+  b.className = 'banner ' + cls;
+  document.getElementById('headline').textContent = head;
+  document.getElementById('sub').textContent = sub;
+  document.getElementById('checked').textContent = ago(cur.checked_at);
+  document.getElementById('overall-uptime').textContent =
+    cur.uptime_90d != null ? cur.uptime_90d.toFixed(2) + '% overall' : '';
+
+  const days = lastNDays(90);
+
+  // Be explicit about how much history actually exists. A "90 days" label over a few
+  // hours of data implies ninety days of perfect uptime, which would be a lie told by
+  // omission on the one page whose entire job is being believed.
+  const observed = new Set();
+  for (const k of Object.keys(hist)) for (const d of Object.keys(hist[k])) observed.add(d);
+  const nDays = observed.size;
+  document.getElementById('window-label').textContent =
+    nDays >= 90 ? 'Uptime over the past 90 days'
+                : `Uptime since monitoring began · ${nDays} day${nDays === 1 ? '' : 's'} of data`;
+
+  document.getElementById('components').innerHTML = cur.components.map(c => {
+    const byDay = hist[c.key] || {};
+    let up = 0, all = 0;
+    for (const d of days) {
+      const e = byDay[d]; if (!e) continue;
+      up += e.up; all += e.up + e.down;
+    }
+    const pct = all ? (100 * up / all).toFixed(2) + '% uptime' : 'Collecting data';
+    const leftLabel = nDays >= 90 ? '90 days ago' : 'Monitoring began';
+    return `
+      <div class="comp">
+        <div class="comp-top">
+          <span class="comp-name">${c.name}</span>
+          <span class="comp-state ${c.up ? 's-ok' : 's-bad'}">${c.up ? 'Operational' : 'Down'}</span>
+        </div>
+        <div class="bars">${strip(days, byDay)}</div>
+        <div class="axis"><span>${leftLabel}</span><span class="rule"></span>
+          <span>${pct}</span><span class="rule"></span><span>Today</span></div>
+      </div>`;
+  }).join('');
+}
+
 load().catch(() => {
+  document.getElementById('banner').className = 'banner b-warn';
   document.getElementById('headline').textContent = 'Status data unavailable';
   document.getElementById('sub').textContent = 'The checker has not reported recently.';
-  document.getElementById('banner').className = 'banner warn';
 });
 setInterval(load, 60000);
 </script>
