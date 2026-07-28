@@ -68,3 +68,53 @@ contains — no page change needed.
 
 Good enough to show a customer honestly. If we ever need multi-region probing with
 sub-minute precision, that is the point at which paying for it makes sense.
+
+---
+
+## Operational notes
+
+### The DNS record must stay DNS-only
+
+`status.valdra.ai` is a CNAME to `canuckt-ai.github.io` with **`proxied=false`** in
+Cloudflare. Turning the orange cloud on breaks GitHub's certificate issuance and the site
+goes to a TLS error. The record carries a comment saying so.
+
+### Custom domain can only be set after a deployment exists
+
+`gh api -X PUT repos/canuckt-ai/valdra-status/pages -f cname=status.valdra.ai` returns
+*"The certificate does not exist yet"* until at least one Pages deployment has completed.
+Deploy first, then set the domain. Committing `public/CNAME` alone did not set it.
+
+### Workflow write permission
+
+The `canuckt-ai` org disables *default* workflow write permissions, so
+`actions/permissions/workflow` cannot be set to `write` at repo level. The explicit
+`permissions: contents: write` block in the workflow overrides that and works — verified
+by the runner committing results.
+
+### Why GitHub Pages rather than Cloudflare Pages
+
+Our Cloudflare API token is DNS-scoped only, so it cannot create a Pages project.
+GitHub Pages gives the property that matters — hosting independent of the estate being
+reported on.
+
+Cloudflare Pages would be marginally better: faster edge, preview deployments, one
+dashboard alongside DNS, and no ToS grey area about commercial use. There is also one
+accepted downside here: the checker and the host are both GitHub, so a GitHub incident
+takes out both, where two providers would not.
+
+**Switching is cheap and nothing is locked in** — point a Cloudflare Pages project at this
+same repo, change one DNS record. No content or workflow changes.
+
+### Adding this link to customer documents
+
+Once `status.valdra.ai` serves 200, link it from:
+
+- **SLA section 2** — it states "an independent synthetic monitor every 30 minutes"; the
+  link turns that claim into something a buyer can verify. Highest-value placement.
+- **Security Overview** → Resilience
+- The onboarding pack's service-commitments table
+
+**Never link it before it resolves.** A dead `status.canuckt.ai` link was one of the
+defects removed from the Shielk pages on 2026-07-28; the same mistake inside a signed
+agreement would be considerably worse.
