@@ -35,10 +35,36 @@ This is separate from, and does not replace, the 30-minute synthetic smoke test 
 against production internally. That one signs in and exercises real workflows end to end
 and drives our alerting. This one is the external, public view.
 
+## History before 28 July 2026
+
+The external probe started on 2026-07-28. Rather than launch the page claiming "100% over
+90 days" off a few hours of data, the `app` component was backfilled from the internal
+end-to-end smoke monitor, which has run every 30 minutes since 2026-07-11:
+
+```bash
+ssh shield 'cat ~/backups/comply-smoke.log' > /tmp/smoke.log
+python3 scripts/backfill_smoke.py /tmp/smoke.log
+```
+
+That window measured **99.357%** — including five real failures (two on 14 July, one on the
+15th, two on the 27th). Those are left visible; a status page that hides its own outages is
+worth nothing to the buyer reading it.
+
+Only `app` was backfilled. The smoke test never checked the marketing site, Trust Center or
+legal documents, so those rows show no data before the 28th rather than assumed uptime. The
+script is idempotent and never overwrites a day the external probe already recorded, so
+re-running it is safe.
+
+The page renders the two sources identically because they answer the same question. They
+are **not** the same measurement: the smoke test signs in and completes a full assessment,
+so it is stricter than an HTTP check and reports the more conservative number. The footer
+says so.
+
 ## Layout
 
 ```
 scripts/probe.py            the checker — dependency-free, never raises
+scripts/backfill_smoke.py   one-time import of internal smoke history (see above)
 public/index.html           the page (static, no build step)
 public/data/current.json    latest result per component
 public/data/history.json    daily up/down buckets, 90-day retention
