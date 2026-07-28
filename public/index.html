@@ -88,7 +88,7 @@ footer a{color:var(--indigo)}
 
 <div class="meta-line">
   <span id="window-label">Uptime</span>
-  <span id="overall-uptime"></span>
+  <span>Each row shows its own measured availability</span>
 </div>
 
 <div id="components"></div>
@@ -101,6 +101,15 @@ footer a{color:var(--indigo)}
   <br>
   Seeing something this page does not show?
   <a href="mailto:support@valdra.ai">support@valdra.ai</a>
+  <br><br>
+  <span style="font-size:12px">
+    History for the Valdra application before 28&nbsp;July 2026 comes from our internal
+    end-to-end monitor, which has run every 30&nbsp;minutes since 11&nbsp;July and signs in
+    and completes a full assessment on each run. It is a stricter test than an availability
+    check, so its figure is the more conservative of the two. Other components began
+    external monitoring on 28&nbsp;July; days before that are shown as no data rather than
+    counted as uptime.
+  </span>
 </footer>
 
 </div>
@@ -153,17 +162,23 @@ async function load(){
   document.getElementById('headline').textContent = head;
   document.getElementById('sub').textContent = sub;
   document.getElementById('checked').textContent = ago(cur.checked_at);
-  document.getElementById('overall-uptime').textContent =
-    cur.uptime_90d != null ? cur.uptime_90d.toFixed(2) + '% overall' : '';
+  // Deliberately no aggregate figure — see the note in the markup.
 
-  const days = lastNDays(90);
+  // Render only as many days as we actually have, growing to 90 as history accumulates.
+  // A fixed 90-day frame over 18 days of data is 72 grey bars — technically honest but it
+  // reads as broken, and it squeezes the real data into an unreadable sliver.
+  const observedDays = new Set();
+  for (const k of Object.keys(hist)) for (const d of Object.keys(hist[k])) observedDays.add(d);
+  const earliest = [...observedDays].sort()[0];
+  const span = earliest
+    ? Math.round((Date.now() - Date.parse(earliest + 'T00:00:00Z')) / 86400000) + 1
+    : 1;
+  const days = lastNDays(Math.min(90, Math.max(span, 1)));
 
   // Be explicit about how much history actually exists. A "90 days" label over a few
   // hours of data implies ninety days of perfect uptime, which would be a lie told by
   // omission on the one page whose entire job is being believed.
-  const observed = new Set();
-  for (const k of Object.keys(hist)) for (const d of Object.keys(hist[k])) observed.add(d);
-  const nDays = observed.size;
+  const nDays = observedDays.size;
   document.getElementById('window-label').textContent =
     nDays >= 90 ? 'Uptime over the past 90 days'
                 : `Uptime since monitoring began · ${nDays} day${nDays === 1 ? '' : 's'} of data`;
@@ -176,7 +191,11 @@ async function load(){
       up += e.up; all += e.up + e.down;
     }
     const pct = all ? (100 * up / all).toFixed(2) + '% uptime' : 'Collecting data';
-    const leftLabel = nDays >= 90 ? '90 days ago' : 'Monitoring began';
+    const own = Object.keys(byDay).sort();
+    const leftLabel = !own.length ? 'No data yet'
+      : own[0] === days[0] ? (nDays >= 90 ? '90 days ago' : 'Monitoring began')
+      : 'Since ' + new Date(own[0] + 'T00:00:00Z')
+          .toLocaleDateString('en-CA', {day:'numeric', month:'short', timeZone:'UTC'});
     return `
       <div class="comp">
         <div class="comp-top">
