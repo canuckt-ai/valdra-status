@@ -1,0 +1,52 @@
+{
+  "checked_at": "2026-07-28T21:54:07.955957+00:00",
+  "components": [
+    {
+      "error": null,
+      "key": "app",
+      "latency_ms": 475,
+      "name": "Valdra application",
+      "status": 200,
+      "up": true,
+      "url": "https://app.valdra.ai/"
+    },
+    {
+      "error": null,
+      "key": "signin",
+      "latency_ms": 350,
+      "name": "Sign-in",
+      "status": 200,
+      "up": true,
+      "url": "https://app.valdra.ai/en/login"
+    },
+    {
+      "error": null,
+      "key": "trust",
+      "latency_ms": 242,
+      "name": "Trust Center",
+      "status": 200,
+      "up": true,
+      "url": "https://app.valdra.ai/trust/canuckt-synergy"
+    },
+    {
+      "error": null,
+      "key": "marketing",
+      "latency_ms": 449,
+      "name": "valdra.ai",
+      "status": 200,
+      "up": true,
+      "url": "https://valdra.ai/"
+    },
+    {
+      "error": null,
+      "key": "legal",
+      "latency_ms": 160,
+      "name": "Legal documents",
+      "status": 200,
+      "up": true,
+      "url": "https://valdra.ai/legal/sla.html"
+    }
+  ],
+  "overall": "operational",
+  "uptime_90d": 100.0
+}

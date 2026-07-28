@@ -1,0 +1,40 @@
+name: uptime check
+
+# Runs on GitHub's infrastructure, NOT ours. That is the whole point: when the OVH
+# estate is down — precisely when a status page matters — the checker and the page both
+# keep working. A status page hosted on the servers it reports on is decoration.
+#
+# This repo is deliberately PUBLIC so Actions minutes are unlimited and free. It holds
+# only uptime results; there is nothing here worth keeping private.
+
+on:
+  schedule:
+    - cron: '*/10 * * * *'   # every 10 minutes
+  workflow_dispatch:          # manual run, for testing
+
+permissions:
+  contents: write
+
+concurrency:
+  group: uptime
+  cancel-in-progress: false
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Probe endpoints
+        run: python3 scripts/probe.py
+
+      - name: Commit result
+        run: |
+          git config user.name  "valdra-status"
+          git config user.email "status@valdra.ai"
+          git add public/data/
+          # Nothing to commit is normal if a run produced no change.
+          git diff --staged --quiet || git commit -m "uptime: $(date -u +%Y-%m-%dT%H:%MZ)"
+          # Another run may have landed first; rebase rather than fail the check.
+          git pull --rebase --autostash origin main || true
+          git push origin HEAD:main
