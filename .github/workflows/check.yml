@@ -14,6 +14,8 @@ on:
 
 permissions:
   contents: write
+  pages: write
+  id-token: write
 
 concurrency:
   group: uptime
@@ -38,3 +40,22 @@ jobs:
           # Another run may have landed first; rebase rather than fail the check.
           git pull --rebase --autostash origin main || true
           git push origin HEAD:main
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: public
+
+  # Published by GitHub Pages, not Cloudflare Pages. Same property that matters — the
+  # page is served from infrastructure entirely separate from the estate it reports on,
+  # so it survives an outage. Deployed from the artifact above rather than a branch
+  # folder, because Pages branch sources only allow / or /docs and the site lives in
+  # public/.
+  deploy:
+    needs: check
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4
