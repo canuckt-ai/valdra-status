@@ -67,8 +67,12 @@ re-running it is safe.
 
 The page renders the two sources identically because they answer the same question. They
 are **not** the same measurement: the smoke test signs in and completes a full assessment,
-so it is stricter than an HTTP check and reports the more conservative number. The footer
-says so.
+so it is stricter than an HTTP check and reports the more conservative number.
+
+The footer discloses that the earlier history is our own monitoring, but deliberately does
+**not** describe how that monitor works. A public page is read by competitors as well as
+customers, and "we sign in every 30 minutes and drive a full assessment" is a description
+of our tooling, not a fact a customer needs. Disclose the provenance, not the mechanism.
 
 ## Layout
 
