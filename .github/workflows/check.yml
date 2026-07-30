@@ -9,8 +9,18 @@ name: uptime check
 
 on:
   schedule:
-    - cron: '*/10 * * * *'   # every 10 minutes
+    # GitHub does not honour this. Measured median gap: 82 minutes, worst 194.
+    # It is kept as a SLOW INDEPENDENT FALLBACK — if @wp (which does the real
+    # 10-minute probing) goes down, this still eventually reports the truth from
+    # infrastructure we do not own.
+    - cron: '*/10 * * * *'
   workflow_dispatch:          # manual run, for testing
+  # The real cadence comes from @wp pushing results every 10 minutes. A PUSH
+  # trigger is NOT throttled the way a schedule is, so this deploys the new data
+  # to Pages within about a minute of the probe running.
+  push:
+    branches: [main]
+    paths: ['public/**']
 
 permissions:
   contents: write
@@ -27,10 +37,14 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      # On a push the data is already fresh — @wp just probed and committed it.
+      # Probing again would only add a redundant sample and risk a push race.
       - name: Probe endpoints
+        if: github.event_name != 'push'
         run: python3 scripts/probe.py
 
       - name: Commit result
+        if: github.event_name != 'push'
         run: |
           git config user.name  "valdra-status"
           git config user.email "status@valdra.ai"
