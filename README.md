@@ -104,8 +104,16 @@ old history is orphaned and silently vanishes from the page.
 
 ## Honest limitations
 
-- GitHub's cron can drift by a few minutes under load, so "every 10 minutes" is a target
-  rather than a guarantee.
+- **GitHub does not honour the 10-minute schedule.** Measured over 25 consecutive runs on
+  2026-07-30: median gap **82 minutes**, range 5–194. GitHub deprioritises frequent
+  scheduled workflows on free runners, and there is no way to buy your way out of it on a
+  public repo. The cron stays at `*/10` because asking for more yields more; just do not
+  believe it.
+  **The page therefore no longer claims a frequency** — it shows when the last check
+  actually ran and lets the reader judge. A status page that overstates its own cadence is
+  worse than one that says nothing, because a gap of two hours reads as two hours of uptime.
+  If sub-hourly certainty is ever needed, that is the point to add a second checker
+  somewhere GitHub isn't.
 - Probes come from one network. A regional routing problem invisible to GitHub would not
   appear here.
 - It measures reachability, not correctness. A page that loads but misbehaves reads as up.
