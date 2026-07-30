@@ -8,12 +8,30 @@ A status page hosted on the servers it reports on is decoration: it goes down ex
 when it is needed. So nothing here touches our production estate.
 
 ```
-GitHub Actions (cron)  ->  probes app.valdra.ai from outside our network
-        v commits
-   this repo           ->  90 days of history, as static JSON
-        v auto-deploy
-  Cloudflare Pages     ->  status.valdra.ai
+cron on @wp (every 10 min, real)  ->  probes app.valdra.ai + valdra.ai
+        v commits + pushes (repo-scoped deploy key)
+   this repo                      ->  90 days of history, as static JSON
+        v push trigger (NOT throttled)
+   GitHub Pages                   ->  status.valdra.ai
+
+GitHub Actions schedule           ->  slow independent fallback, still runs
 ```
+
+**Why the probe moved off GitHub Actions.** Scheduled workflows are deprioritised on
+free runners: measured over 25 consecutive runs, the `*/10` schedule fired with a
+**median gap of 82 minutes** and a worst case of **194**. A status page cannot honestly
+report a one-hour outage if it only looks three times a day. No setting or payment
+changes this on a public repo.
+
+`@wp` runs the probe on a real cron and pushes. A **push** trigger is not throttled, so
+Pages redeploys within about a minute. The page still lives on GitHub Pages, so it
+survives an outage of the estate it reports on — that property is not traded away.
+
+**Honest limitation:** @wp is our own infrastructure, on a different machine from the
+app it monitors (@shield) but in the same provider. If @wp itself dies, checks stop and
+the page freezes showing "Updated N hours ago". The GitHub Actions schedule is
+deliberately left in place as a slow fallback that would still catch that from
+infrastructure we do not own.
 
 The repo is **public on purpose**: GitHub Actions minutes are unlimited on public repos,
 which makes the whole thing free. It contains only uptime results — nothing worth keeping
