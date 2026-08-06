@@ -206,10 +206,37 @@ document.addEventListener('click', e => {
 });
 window.addEventListener('scroll', hideTip, {passive: true});
 
+// Read the probe results straight from the repo rather than from whatever was last
+// baked into a Pages deployment.
+//
+// WHY: @wp commits fresh results every 10 minutes, but publishing them used to require a
+// GitHub Pages deployment on every single commit. On 2026-08-06 Pages stalled — every
+// deployment sat in `deployment_queued` until it timed out — and the page silently froze
+// at 11:39 while the probe carried on working perfectly. A status page that reports stale
+// numbers with confidence is worse than one that is plainly down.
+//
+// raw.githubusercontent.com serves the committed file directly with
+// `access-control-allow-origin: *` and a 300s cache, which is well inside the 10-minute
+// probe cadence. It is still GitHub infrastructure, entirely separate from the OVH estate
+// this page reports on, so the survive-an-outage property is unchanged.
+//
+// The baked-in copy under data/ stays as the fallback, so the page degrades to "last
+// deployed snapshot" instead of breaking if raw is ever unreachable.
+const RAW = 'https://raw.githubusercontent.com/canuckt-ai/valdra-status/main/public/data/';
+
+async function fetchData(name){
+  try {
+    const r = await fetch(RAW + name + '?t=' + Date.now(), {cache: 'no-store'});
+    if (r.ok) return await r.json();
+  } catch (e) { /* fall through to the deployed copy */ }
+  const r = await fetch('data/' + name + '?t=' + Date.now());
+  return await r.json();
+}
+
 async function load(){
   const [cur, hist] = await Promise.all([
-    fetch('data/current.json?t=' + Date.now()).then(r => r.json()),
-    fetch('data/history.json?t=' + Date.now()).then(r => r.json()).catch(() => ({}))
+    fetchData('current.json'),
+    fetchData('history.json').catch(() => ({}))
   ]);
 
   const [cls, head, sub] = BANNER[cur.overall] || BANNER.degraded;
