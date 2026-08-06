@@ -15,12 +15,22 @@ on:
     # infrastructure we do not own.
     - cron: '*/10 * * * *'
   workflow_dispatch:          # manual run, for testing
-  # The real cadence comes from @wp pushing results every 10 minutes. A PUSH
-  # trigger is NOT throttled the way a schedule is, so this deploys the new data
-  # to Pages within about a minute of the probe running.
+  # Deliberately NOT triggered by data commits any more. @wp still pushes results every
+  # 10 minutes, but the page now reads those results live from raw.githubusercontent.com
+  # (see the RAW note in public/index.html), so fresh data needs no deployment at all.
+  #
+  # Before this change every data commit forced a Pages deployment. That is ~144 deploys
+  # a day of an unchanged HTML shell, and on 2026-08-06 it wedged Pages: deployments piled
+  # up, then every one sat in `deployment_queued` until it timed out, spraying failure
+  # notifications while the page silently served 90-minute-old numbers.
+  #
+  # So deploy only when the shell itself changes.
   push:
     branches: [main]
-    paths: ['public/**']
+    paths:
+      - 'public/index.html'
+      - 'public/CNAME'
+      - '.github/workflows/check.yml'
 
 permissions:
   contents: write
@@ -75,6 +85,10 @@ jobs:
   # public/.
   deploy:
     needs: check
+    # The scheduled run exists only as an independent fallback prober. It commits data,
+    # and data is read live by the page, so it has nothing to publish. Skipping the
+    # deployment here is what keeps Pages idle enough to stay healthy.
+    if: github.event_name != 'schedule'
     runs-on: ubuntu-latest
     environment:
       name: github-pages
