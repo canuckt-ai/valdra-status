@@ -215,6 +215,8 @@ window.addEventListener('scroll', hideTip, {passive: true});
 // at 11:39 while the probe carried on working perfectly. A status page that reports stale
 // numbers with confidence is worse than one that is plainly down.
 //
+// Samples live on the `data` branch, not `main`. Keeping them off `main` means Pages
+// almost never rebuilds, which is what stops the jam that broke this page.
 // raw.githubusercontent.com serves the committed file directly with
 // `access-control-allow-origin: *` and a 300s cache, which is well inside the 10-minute
 // probe cadence. It is still GitHub infrastructure, entirely separate from the OVH estate
@@ -222,7 +224,7 @@ window.addEventListener('scroll', hideTip, {passive: true});
 //
 // The baked-in copy under data/ stays as the fallback, so the page degrades to "last
 // deployed snapshot" instead of breaking if raw is ever unreachable.
-const RAW = 'https://raw.githubusercontent.com/canuckt-ai/valdra-status/main/public/data/';
+const RAW = 'https://raw.githubusercontent.com/canuckt-ai/valdra-status/data/public/data/';
 
 async function fetchData(name){
   try {
