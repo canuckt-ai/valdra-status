@@ -1,0 +1,302 @@
+<!doctype html>
+<html lang="en"><head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Valdra Status</title>
+<meta name="description" content="Live availability for the Valdra compliance platform, checked from outside our own infrastructure.">
+<link rel="canonical" href="https://status.valdra.ai/">
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTIwIiBoZWlnaHQ9IjEyMCIgdmlld0JveD0iMCAwIDEyMCAxMjAiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CiAgPHJlY3Qgd2lkdGg9IjEyMCIgaGVpZ2h0PSIxMjAiIHJ4PSIyNCIgZmlsbD0iIzUyM0ZBQiIvPgogIDxwb2x5bGluZSBwb2ludHM9IjI4LDYyIDQ4LDg0IDkyLDM2IiBmaWxsPSJub25lIiBzdHJva2U9IiNGRkZGRkYiIHN0cm9rZS13aWR0aD0iMTEiIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIgc3Ryb2tlLWxpbmVqb2luPSJyb3VuZCIvPgogIDxyZWN0IHg9IjAiIHk9IjExMiIgd2lkdGg9IjEyMCIgaGVpZ2h0PSI1IiByeD0iMi41IiBmaWxsPSIjQzg5NDBBIi8+Cjwvc3ZnPgo=">
+<meta name="color-scheme" content="light">
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700&display=swap');
+
+/* Deliberately light-only. A status page is read in a hurry, often by someone anxious,
+   and frequently printed or screenshotted into an incident report. Following the OS dark
+   preference made it a wall of black; calm and legible beats clever here. */
+:root{
+  --bg:#FAF9F5;            /* warm off-white — softer than pure white under fluorescents */
+  --card:#FFFFFF;
+  --ink:#1B1B2F;
+  --muted:#6B6880;
+  --line:#E7E4DC;
+  --indigo:#523FAB;
+  --ok:#5A9E3C;            /* muted green — a status page should not look like a toy */
+  --ok-soft:#EAF3E4;
+  --warn:#D9922B;
+  --bad:#C4362B;
+}
+*{box-sizing:border-box}
+html,body{background:var(--bg)}
+body{
+  font-family:Montserrat,-apple-system,BlinkMacSystemFont,Segoe UI,sans-serif;
+  color:var(--ink); margin:0; padding:52px 20px 90px; line-height:1.6;
+  -webkit-font-smoothing:antialiased;
+}
+.wrap{max-width:860px;margin:0 auto}
+
+header{display:flex;justify-content:space-between;align-items:center;
+       margin-bottom:38px;flex-wrap:wrap;gap:14px}
+.brand{font-size:23px;font-weight:700;color:var(--indigo);text-decoration:none;letter-spacing:-.5px;line-height:1.15}
+.brand small{display:block;font-size:9px;letter-spacing:2.6px;color:var(--muted);font-weight:600;margin-top:3px}
+.checked{font-size:12.5px;color:var(--muted)}
+
+/* Solid status banner — the one thing a visitor must read in under a second. */
+.banner{border-radius:10px;padding:19px 24px;margin-bottom:34px;color:#fff;
+        font-size:18px;font-weight:600;letter-spacing:-.2px;
+        display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap}
+.banner .sub{font-size:13px;font-weight:400;opacity:.92}
+.b-ok{background:var(--ok)} .b-warn{background:var(--warn)} .b-bad{background:var(--bad)}
+
+.meta-line{display:flex;justify-content:space-between;align-items:baseline;
+           font-size:12.5px;color:var(--muted);margin-bottom:10px}
+
+/* One card per component, each with its own 90-day strip — an aggregate bar hides
+   which thing was actually broken, which is the only question a visitor has. */
+.comp{background:var(--card);border:1px solid var(--line);border-radius:10px;
+      padding:18px 22px 15px;margin-bottom:12px}
+.comp-top{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:13px}
+.comp-name{font-weight:600;font-size:14.5px}
+.comp-state{font-size:12.5px;font-weight:600;white-space:nowrap}
+.s-ok{color:var(--ok)} .s-bad{color:var(--bad)}
+
+.bars{display:flex;gap:2px;height:34px;align-items:stretch}
+.bar{flex:1;min-width:2px;border-radius:1.5px;background:#EDEAE3;
+     transition:opacity .12s ease}
+.bars:hover .bar{opacity:.45}
+.bars .bar:hover{opacity:1}
+.bar-ok{background:var(--ok)} .bar-warn{background:var(--warn)} .bar-bad{background:var(--bad)}
+
+.axis{display:flex;align-items:center;gap:10px;margin-top:9px;font-size:11.5px;color:var(--muted)}
+.axis .rule{flex:1;height:1px;background:var(--line)}
+
+/* Hover card. Fixed-positioned and appended to <body> so it is never clipped by a
+   card's overflow, and pointer-events:none so it can never sit between the cursor and
+   the bar underneath it and cause a flicker loop. */
+#tip{position:fixed;z-index:50;pointer-events:none;opacity:0;
+     transition:opacity .1s ease;background:#1B1B2F;color:#fff;
+     border-radius:8px;padding:9px 13px;font-size:12.5px;line-height:1.5;
+     box-shadow:0 6px 22px rgba(27,27,47,.22);max-width:250px;
+     transform:translate(-50%,-100%)}
+#tip.on{opacity:1}
+#tip .t-date{font-weight:600;margin-bottom:2px;white-space:nowrap}
+#tip .t-stat{color:#C9C5DA}
+#tip .t-stat.bad{color:#FF9A8F}
+#tip:after{content:'';position:absolute;left:50%;top:100%;margin-left:-5px;
+           border:5px solid transparent;border-top-color:#1B1B2F}
+
+footer{margin-top:40px;padding-top:22px;border-top:1px solid var(--line);
+       font-size:13px;color:var(--muted);line-height:1.75}
+footer a{color:var(--indigo)}
+@media (max-width:560px){
+  body{padding:34px 15px 70px}
+  .banner{font-size:16px}
+  .comp{padding:15px 16px 13px}
+}
+</style></head>
+<body><div class="wrap">
+
+<header>
+  <a class="brand" href="https://valdra.ai">Valdra<small>STATUS</small></a>
+  <span class="checked" id="checked">Loading…</span>
+</header>
+
+<div class="banner b-ok" id="banner">
+  <span id="headline">Checking status…</span>
+  <span class="sub" id="sub"></span>
+</div>
+
+<div class="meta-line">
+  <span id="window-label">Uptime</span>
+  <span>Each row shows its own measured availability</span>
+</div>
+
+<div id="components"></div>
+
+<footer>
+  Checked from outside our own infrastructure, so this page stays up even when Valdra
+  does not. The timestamp above shows when the last check actually ran. Our
+  <a href="https://valdra.ai/legal/sla.html">Service Level Agreement</a>
+  commits to 99.0% monthly availability with service credits.
+  <br>
+  Seeing something this page does not show?
+  <a href="mailto:support@valdra.ai">support@valdra.ai</a>
+  <br><br>
+  <span style="font-size:12px">
+    Valdra application history before 28&nbsp;July 2026 comes from our own monitoring.
+    Other components began external monitoring on 28&nbsp;July; earlier days show no data
+    rather than being counted as uptime.
+  </span>
+</footer>
+
+</div>
+<div id="tip" role="tooltip" aria-hidden="true"></div>
+<script>
+const BANNER = {
+  operational: ['b-ok',   'All systems operational', 'Everything is running normally.'],
+  degraded:    ['b-warn', 'Partial outage',          'Some components are affected. We are on it.'],
+  outage:      ['b-bad',  'Major outage',            'We are aware and working to restore service.']
+};
+
+function ago(iso){
+  const m = Math.round((Date.now() - new Date(iso)) / 60000);
+  if (m < 2) return 'Updated just now';
+  if (m < 60) return 'Updated ' + m + ' minutes ago';
+  const h = Math.round(m / 60);
+  return 'Updated ' + h + (h === 1 ? ' hour ago' : ' hours ago');
+}
+
+// 90 calendar days ending today, so gaps in history render as "no data" rather than
+// silently compressing the timeline and making an outage look shorter than it was.
+function lastNDays(n){
+  const out = [], d = new Date();
+  for (let i = n - 1; i >= 0; i--) {
+    const x = new Date(d); x.setUTCDate(d.getUTCDate() - i);
+    out.push(x.toISOString().slice(0, 10));
+  }
+  return out;
+}
+
+const DATE_FMT = {weekday:'long', day:'numeric', month:'long', year:'numeric', timeZone:'UTC'};
+const longDate = d => new Date(d + 'T00:00:00Z').toLocaleDateString('en-CA', DATE_FMT);
+
+// The native `title` attribute was replaced with a real hover card: it took ~1s to appear,
+// could not be styled, and showed a bare ISO date. On a page someone opens mid-incident,
+// "which day was that?" needs answering instantly.
+function strip(days, byDay){
+  return days.map(d => {
+    const e = byDay[d];
+    const date = longDate(d);
+    if (!e || !(e.up + e.down))
+      return `<div class="bar" data-date="${date}" data-stat="No data — monitoring had not started"></div>`;
+    const total = e.up + e.down, pct = e.up / total;
+    const cls = pct === 1 ? 'bar-ok' : pct >= 0.95 ? 'bar-warn' : 'bar-bad';
+    // Say how many checks failed, not just a percentage — "2 of 48 checks failed" is a
+    // fact someone can match against their own logs; "95.8%" is not.
+    const stat = pct === 1
+      ? `No downtime · ${total} checks`
+      : `${e.down} of ${total} checks failed · ${(100 * pct).toFixed(2)}% uptime`;
+    return `<div class="bar ${cls}" data-date="${date}" data-stat="${stat}"${pct < 1 ? ' data-bad="1"' : ''}></div>`;
+  }).join('');
+}
+
+const tip = document.getElementById('tip');
+function showTip(bar){
+  tip.innerHTML = `<div class="t-date">${bar.dataset.date}</div>` +
+                  `<div class="t-stat${bar.dataset.bad ? ' bad' : ''}">${bar.dataset.stat}</div>`;
+  tip.classList.add('on');
+  tip.setAttribute('aria-hidden', 'false');
+  const r = bar.getBoundingClientRect(), w = tip.offsetWidth;
+  // Clamp to the viewport so the first and last bars do not push the card off-screen.
+  const x = Math.min(Math.max(r.left + r.width / 2, w / 2 + 8), window.innerWidth - w / 2 - 8);
+  tip.style.left = x + 'px';
+  tip.style.top  = (r.top - 10) + 'px';
+}
+function hideTip(){ tip.classList.remove('on'); tip.setAttribute('aria-hidden', 'true'); }
+
+// Delegated, so it keeps working across the 60-second re-render that replaces every bar.
+document.addEventListener('mouseover', e => {
+  const bar = e.target.closest('.bar');
+  if (bar) showTip(bar); else if (!e.target.closest('#tip')) hideTip();
+});
+document.addEventListener('mouseleave', hideTip, true);
+// Touch: tap a bar to read it, tap anywhere else to dismiss.
+document.addEventListener('click', e => {
+  const bar = e.target.closest('.bar');
+  bar ? showTip(bar) : hideTip();
+});
+window.addEventListener('scroll', hideTip, {passive: true});
+
+// Read the probe results straight from the repo rather than from whatever was last
+// baked into a Pages deployment.
+//
+// WHY: @wp commits fresh results every 10 minutes, but publishing them used to require a
+// GitHub Pages deployment on every single commit. On 2026-08-06 Pages stalled — every
+// deployment sat in `deployment_queued` until it timed out — and the page silently froze
+// at 11:39 while the probe carried on working perfectly. A status page that reports stale
+// numbers with confidence is worse than one that is plainly down.
+//
+// raw.githubusercontent.com serves the committed file directly with
+// `access-control-allow-origin: *` and a 300s cache, which is well inside the 10-minute
+// probe cadence. It is still GitHub infrastructure, entirely separate from the OVH estate
+// this page reports on, so the survive-an-outage property is unchanged.
+//
+// The baked-in copy under data/ stays as the fallback, so the page degrades to "last
+// deployed snapshot" instead of breaking if raw is ever unreachable.
+const RAW = 'https://raw.githubusercontent.com/canuckt-ai/valdra-status/main/public/data/';
+
+async function fetchData(name){
+  try {
+    const r = await fetch(RAW + name + '?t=' + Date.now(), {cache: 'no-store'});
+    if (r.ok) return await r.json();
+  } catch (e) { /* fall through to the deployed copy */ }
+  const r = await fetch('data/' + name + '?t=' + Date.now());
+  return await r.json();
+}
+
+async function load(){
+  const [cur, hist] = await Promise.all([
+    fetchData('current.json'),
+    fetchData('history.json').catch(() => ({}))
+  ]);
+
+  const [cls, head, sub] = BANNER[cur.overall] || BANNER.degraded;
+  const b = document.getElementById('banner');
+  b.className = 'banner ' + cls;
+  document.getElementById('headline').textContent = head;
+  document.getElementById('sub').textContent = sub;
+  document.getElementById('checked').textContent = ago(cur.checked_at);
+  // Deliberately no aggregate figure — see the note in the markup.
+
+  // Render only as many days as we actually have, growing to 90 as history accumulates.
+  // A fixed 90-day frame over 18 days of data is 72 grey bars — technically honest but it
+  // reads as broken, and it squeezes the real data into an unreadable sliver.
+  const observedDays = new Set();
+  for (const k of Object.keys(hist)) for (const d of Object.keys(hist[k])) observedDays.add(d);
+  const earliest = [...observedDays].sort()[0];
+  const span = earliest
+    ? Math.round((Date.now() - Date.parse(earliest + 'T00:00:00Z')) / 86400000) + 1
+    : 1;
+  const days = lastNDays(Math.min(90, Math.max(span, 1)));
+
+  // Be explicit about how much history actually exists. A "90 days" label over a few
+  // hours of data implies ninety days of perfect uptime, which would be a lie told by
+  // omission on the one page whose entire job is being believed.
+  const nDays = observedDays.size;
+  document.getElementById('window-label').textContent =
+    nDays >= 90 ? 'Uptime over the past 90 days'
+                : `Uptime since monitoring began · ${nDays} day${nDays === 1 ? '' : 's'} of data`;
+
+  document.getElementById('components').innerHTML = cur.components.map(c => {
+    const byDay = hist[c.key] || {};
+    let up = 0, all = 0;
+    for (const d of days) {
+      const e = byDay[d]; if (!e) continue;
+      up += e.up; all += e.up + e.down;
+    }
+    const pct = all ? (100 * up / all).toFixed(2) + '% uptime' : 'Collecting data';
+    const own = Object.keys(byDay).sort();
+    const leftLabel = !own.length ? 'No data yet'
+      : own[0] === days[0] ? (nDays >= 90 ? '90 days ago' : 'Monitoring began')
+      : 'Since ' + new Date(own[0] + 'T00:00:00Z')
+          .toLocaleDateString('en-CA', {day:'numeric', month:'short', timeZone:'UTC'});
+    return `
+      <div class="comp">
+        <div class="comp-top">
+          <span class="comp-name">${c.name}</span>
+          <span class="comp-state ${c.up ? 's-ok' : 's-bad'}">${c.up ? 'Operational' : 'Down'}</span>
+        </div>
+        <div class="bars">${strip(days, byDay)}</div>
+        <div class="axis"><span>${leftLabel}</span><span class="rule"></span>
+          <span>${pct}</span><span class="rule"></span><span>Today</span></div>
+      </div>`;
+  }).join('');
+}
+
+load().catch(() => {
+  document.getElementById('banner').className = 'banner b-warn';
+  document.getElementById('headline').textContent = 'Status data unavailable';
+  document.getElementById('sub').textContent = 'The checker has not reported recently.';
+});
+setInterval(load, 60000);
+</script>
+</body></html>
