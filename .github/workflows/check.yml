@@ -40,24 +40,32 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0     # need the `data` branch as well as main
 
-      # On a push the data is already fresh — @wp just probed and committed it.
-      # Probing again would only add a redundant sample and risk a push race.
+      # Carry the accumulated samples forward before probing. probe.py READS history.json
+      # and appends to it, so starting from main's stale snapshot would silently reset the
+      # uptime history instead of extending it.
+      - name: Load existing samples from the data branch
+        run: |
+          git fetch -q origin data || exit 0
+          git checkout -q origin/data -- public/data/ || true
+
       - name: Probe endpoints
-        if: github.event_name != 'push'
         run: python3 scripts/probe.py
 
+      # Samples go to the `data` branch, never to `main` — same reason as
+      # scripts/probe-cron.sh. A push to `main` makes GitHub Pages republish, and it was
+      # republishing ~144 times a day that jammed Pages on 2026-08-06.
       - name: Commit result
-        if: github.event_name != 'push'
         run: |
           git config user.name  "valdra-status"
           git config user.email "status@valdra.ai"
           git add public/data/
           # Nothing to commit is normal if a run produced no change.
-          git diff --staged --quiet || git commit -m "uptime: $(date -u +%Y-%m-%dT%H:%MZ)"
-          # Another run may have landed first; rebase rather than fail the check.
-          git pull --rebase --autostash origin main || true
-          git push origin HEAD:main
+          git diff --staged --quiet && exit 0
+          git commit -m "uptime: $(date -u +%Y-%m-%dT%H:%MZ) (fallback probe)"
+          git push -f origin HEAD:data
 
 # ── Publishing ────────────────────────────────────────────────────────────────
 # NO deploy job. status.valdra.ai is published by GitHub Pages directly from the
