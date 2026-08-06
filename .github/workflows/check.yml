@@ -27,9 +27,18 @@ permissions:
   pages: write
   id-token: write
 
+# CANCEL, do not queue. @wp pushes every 10 minutes and a run takes 2-8 minutes, so
+# with cancel-in-progress:false the queue grows faster than it drains. On 2026-08-06 two
+# deployments landed a minute apart (11:39 and 11:40), GitHub Pages wedged, and every
+# deployment after that sat in `deployment_queued` until it timed out. The page kept
+# serving, but frozen at 11:39 while the probe carried on committing fresh data.
+#
+# A superseded uptime deploy has zero value: the run behind it carries strictly newer
+# data. Cancelling is therefore free, and it makes the pileup impossible rather than
+# merely unlikely. The probe itself lives on @wp, so a cancelled run loses no samples.
 concurrency:
   group: uptime
-  cancel-in-progress: false
+  cancel-in-progress: true
 
 jobs:
   check:
@@ -70,6 +79,15 @@ jobs:
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
+    # A job-level cap as well as the action's own timeout. Without this a wedged Pages
+    # deployment holds the concurrency slot for its full default 10 minutes, which is
+    # longer than the gap between probes — so the backlog can never drain on its own.
+    timeout-minutes: 6
     steps:
       - id: deployment
         uses: actions/deploy-pages@v4
+        with:
+          # Default is 600000 (10 min). Pages normally publishes in well under a minute;
+          # if it has not finished in three, it is stuck, and failing fast lets the next
+          # run take a clean slot instead of inheriting the jam.
+          timeout: 180000
