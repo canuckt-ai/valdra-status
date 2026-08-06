@@ -15,37 +15,22 @@ on:
     # infrastructure we do not own.
     - cron: '*/10 * * * *'
   workflow_dispatch:          # manual run, for testing
-  # Deliberately NOT triggered by data commits any more. @wp still pushes results every
-  # 10 minutes, but the page now reads those results live from raw.githubusercontent.com
-  # (see the RAW note in public/index.html), so fresh data needs no deployment at all.
-  #
-  # Before this change every data commit forced a Pages deployment. That is ~144 deploys
-  # a day of an unchanged HTML shell, and on 2026-08-06 it wedged Pages: deployments piled
-  # up, then every one sat in `deployment_queued` until it timed out, spraying failure
-  # notifications while the page silently served 90-minute-old numbers.
-  #
-  # So deploy only when the shell itself changes.
-  push:
-    branches: [main]
-    paths:
-      - 'public/index.html'
-      - 'public/CNAME'
-      - '.github/workflows/check.yml'
 
+  # NO push trigger. There used to be one so that every data commit republished the page.
+  # That was the bug: ~144 Pages deployments a day of an HTML shell that never changes.
+  # On 2026-08-06 it wedged — deployments queued and timed out for hours, the page froze
+  # at 11:39 while the prober kept working, and every failure emailed the founder.
+  #
+  # Publishing is now branch-based and needs no workflow at all: Pages serves index.html
+  # from the repo root on push, and the live numbers are fetched client-side from
+  # raw.githubusercontent.com. So this workflow's ONLY remaining job is to be a slow,
+  # independent fallback prober for the case where @wp itself dies.
+
+# Only `contents: write`, to commit fallback samples. The pages/id-token permissions went
+# with the deploy job — nothing here talks to the Pages deployment API any more.
 permissions:
   contents: write
-  pages: write
-  id-token: write
 
-# CANCEL, do not queue. @wp pushes every 10 minutes and a run takes 2-8 minutes, so
-# with cancel-in-progress:false the queue grows faster than it drains. On 2026-08-06 two
-# deployments landed a minute apart (11:39 and 11:40), GitHub Pages wedged, and every
-# deployment after that sat in `deployment_queued` until it timed out. The page kept
-# serving, but frozen at 11:39 while the probe carried on committing fresh data.
-#
-# A superseded uptime deploy has zero value: the run behind it carries strictly newer
-# data. Cancelling is therefore free, and it makes the pileup impossible rather than
-# merely unlikely. The probe itself lives on @wp, so a cancelled run loses no samples.
 concurrency:
   group: uptime
   cancel-in-progress: true
@@ -74,34 +59,24 @@ jobs:
           git pull --rebase --autostash origin main || true
           git push origin HEAD:main
 
-      - uses: actions/upload-pages-artifact@v3
-        with:
-          path: public
-
-  # Published by GitHub Pages, not Cloudflare Pages. Same property that matters — the
-  # page is served from infrastructure entirely separate from the estate it reports on,
-  # so it survives an outage. Deployed from the artifact above rather than a branch
-  # folder, because Pages branch sources only allow / or /docs and the site lives in
-  # public/.
-  deploy:
-    needs: check
-    # The scheduled run exists only as an independent fallback prober. It commits data,
-    # and data is read live by the page, so it has nothing to publish. Skipping the
-    # deployment here is what keeps Pages idle enough to stay healthy.
-    if: github.event_name != 'schedule'
-    runs-on: ubuntu-latest
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
-    # A job-level cap as well as the action's own timeout. Without this a wedged Pages
-    # deployment holds the concurrency slot for its full default 10 minutes, which is
-    # longer than the gap between probes — so the backlog can never drain on its own.
-    timeout-minutes: 6
-    steps:
-      - id: deployment
-        uses: actions/deploy-pages@v4
-        with:
-          # Default is 600000 (10 min). Pages normally publishes in well under a minute;
-          # if it has not finished in three, it is stuck, and failing fast lets the next
-          # run take a clean slot instead of inheriting the jam.
-          timeout: 180000
+# ── Publishing ────────────────────────────────────────────────────────────────
+# NO deploy job. status.valdra.ai is published by GitHub Pages directly from the
+# `main` branch root, not from an Actions artifact.
+#
+# WHY (2026-08-06): the artifact + actions/deploy-pages path failed hard. Two
+# deployments landed a minute apart at 11:39/11:40, one jammed, and from then on
+# every deployment sat in `deployment_queued` until it timed out. Cancelling the
+# stuck one let deployments be created again but they still never completed, so
+# nothing could publish for hours. Meanwhile the page kept serving frozen 11:39
+# numbers while the prober was working perfectly, which is the single worst thing
+# a status page can do.
+#
+# Root cause was cadence: republishing on every data commit meant ~144 Pages
+# deployments a day of an HTML shell that never changes.
+#
+# Now: the shell is a plain file at the repo root, and the live data is fetched
+# client-side from raw.githubusercontent.com (see the RAW note in index.html).
+# Branch publishing needs no deployment lock, so there is nothing left to wedge
+# and nothing left to email about. This job therefore only probes.
+#
+# Editing the page: change index.html at the repo root. Pages picks it up on push.
