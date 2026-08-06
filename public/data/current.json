@@ -1,10 +1,10 @@
 {
-  "checked_at": "2026-08-06T03:43:37.059618+00:00",
+  "checked_at": "2026-08-06T03:50:02.362614+00:00",
   "components": [
     {
       "error": null,
       "key": "app",
-      "latency_ms": 285,
+      "latency_ms": 211,
       "name": "Valdra application",
       "status": 200,
       "up": true,
@@ -13,7 +13,7 @@
     {
       "error": null,
       "key": "api",
-      "latency_ms": 85,
+      "latency_ms": 33,
       "name": "API",
       "status": 200,
       "up": true,
@@ -22,7 +22,7 @@
     {
       "error": null,
       "key": "website",
-      "latency_ms": 224,
+      "latency_ms": 170,
       "name": "Website",
       "status": 200,
       "up": true,
