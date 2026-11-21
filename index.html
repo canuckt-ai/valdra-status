@@ -47,6 +47,13 @@ header{display:flex;justify-content:space-between;align-items:center;
 .banner .sub{font-size:13px;font-weight:400;opacity:.92}
 .b-ok{background:var(--ok)} .b-warn{background:var(--warn)} .b-bad{background:var(--bad)}
 
+/* Scheduled maintenance notice. Each one carries its own end time and hides itself
+   30 minutes after it, so a stale notice never outlives its window. */
+.notice{background:var(--card);border:1px solid var(--line);border-left:4px solid var(--warn);
+        border-radius:10px;padding:16px 22px;margin:-18px 0 30px;font-size:14px}
+.notice strong{display:block;font-size:15px;margin-bottom:4px}
+.notice p{margin:4px 0 0;color:var(--muted)}
+
 .meta-line{display:flex;justify-content:space-between;align-items:baseline;
            font-size:12.5px;color:var(--muted);margin-bottom:10px}
 
@@ -105,6 +112,14 @@ footer a{color:var(--indigo)}
   <span class="sub" id="sub"></span>
 </div>
 
+<div class="notice" data-until="2026-11-21T11:30:00Z">
+  <strong>Scheduled maintenance: Saturday 21 November 2026, 10:00 to 11:00 UTC (06:00 to 07:00 Atlantic)</strong>
+  We are applying security updates and restarting a server. app.valdra.ai and the Valdra connector
+  may be unavailable for up to 30 minutes inside this window.
+  <p>This notice is shorter than the 48 hours our Service Level Agreement promises, so any downtime
+  in this window counts toward our availability commitment.</p>
+</div>
+
 <div class="meta-line">
   <span id="window-label">Uptime</span>
   <span>Each row shows its own measured availability</span>
@@ -131,6 +146,9 @@ footer a{color:var(--indigo)}
 </div>
 <div id="tip" role="tooltip" aria-hidden="true"></div>
 <script>
+document.querySelectorAll('.notice[data-until]').forEach(n => {
+  if (Date.now() > Date.parse(n.dataset.until)) n.remove();
+});
 const BANNER = {
   operational: ['b-ok',   'All systems operational', 'Everything is running normally.'],
   degraded:    ['b-warn', 'Partial outage',          'Some components are affected. We are on it.'],
